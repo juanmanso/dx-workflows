@@ -1,0 +1,73 @@
+# The goal of this workflow is to speed up PR creation and ensure guidelines are followed.
+# Additionally, it should improve developer's experience by automating things that are
+# already determined from branch and commit strings.
+
+name: Add JIRA tickets links to PR's description
+
+on:
+  workflow_call:
+    inputs:
+      DELIMITER:
+        description: "String to use as reference to split PR's text"
+        # default: "## <Header>"
+        required: true
+        type: string
+      SCAPED_DELIMITER:
+        description: "Same string as DELIMITER but with any special char scaped"
+        # default: "\\#\\# <Header>"
+        required: true
+        type: string
+      JIRA_BASE_URL:
+        description: "URL associated with the JIRA project"
+        # default: "https://<org-name>.atlassian.net/browse/"
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  # This job uses branch's name to infer the tickets
+  add-jira-ticket-link-to-pr-from-branch:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Parse branch name to text block
+        id: parse_branch_name
+        run: |
+          echo ${{ github.head_ref }} |\
+          echo "text_block=$(\
+            awk '{n = split($0, t, "/"); for (i = 1; ++i <= n;) printf "- "t[1]" ["t[i]"](${{ inputs.JIRA_BASE_URL }}/browse/"t[i]")\\\\r\\\\n "; print ""}; '
+          )" >> $GITHUB_OUTPUT
+
+      - name: Get current PR description
+        id: get_current_pr_description
+        run: |
+          echo "current_body=$(\
+            curl \
+              -u  ${{ secrets.GH_TOKEN }}:x-oauth-basic \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+              | jq '.body'\
+          )" >> $GITHUB_OUTPUT
+
+      - name: Create new description to be assigned
+        id: create_new_description
+        run: |
+          echo ${{ steps.get_current_pr_description.outputs.current_body }} |\
+          echo "new_body=$(\
+           awk '{ \
+              n = split($0, t, "${{ inputs.DELIMITER }}"); \
+              printf "%s ${{ steps.parse_branch_name.outputs.text_block }}\\r\\n${{ inputs.SCAPED_DELIMITER }} %s", t[1], t[2];\
+            }'\
+          )" | sed s/\'/\'\\\\\'\'/g >> $GITHUB_OUTPUT
+
+      - name: Assign new description to PR
+        run: |
+          echo ${{ steps.create_new_description.outputs.new_body }} \
+          curl \
+            -u  ${{ secrets.GH_TOKEN }}:x-oauth-basic \
+            -X PATCH \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+            -d '{"body": "${{ steps.create_new_description.outputs.new_body }}"}'
