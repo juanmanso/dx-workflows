@@ -1,0 +1,31 @@
+# This action is meant to greet the developer and congratulate them for their first PR published
+# Also, the greet will remind the developer to check out the Contributing Guidelines and how to
+# actually fill the PR.
+name: First contribution greeting
+
+# Controls when the workflow will run
+on:
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  first-contribution-greeting:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/first-interaction@v1.1.1
+        with:
+          repo-token: ${{ secrets.GH_TOKEN }}
+          pr-message: |-
+            # 🎉 Thanks for opening your first Pull Request! 🎉
+            Take a moment to make sure the PR is in line with our [Contributing Guidelines](CONTRIBUTING.md).
+
+            As a quick reminder/TL;DR:
+            - PR titles and commit messages should follow the convention
+            - Either if it's a fix or a feature, remember to add evidence of the changes (screenshots, videos, test runs, etc.)
+            - Ask your squad teammates to review your changes
+            - Don't forget to assign the PR to yourself in the assignee entry on the right
+            - After the PR is approved, ask if it should be further tested by QA and deploy or create builds for them
+            - Last but not least, always use `squash and merge` for PR merging against our default development branch
