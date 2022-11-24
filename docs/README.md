@@ -6,6 +6,7 @@ on this repository. Also, some more general-use documentation is appended here.
 ## Workflows
 - [First Contribution Greeting](./first_contribution_greeting.md)
 - [Add Jira Ticket Link To Pr From Branch](./add_jira_ticket_link_to_pr_from_branch.md)
+- [Init PR Title from Commit](./init_pr_title_from_commit.md)
 
 ---
 
