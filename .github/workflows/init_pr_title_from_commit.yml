@@ -1,0 +1,37 @@
+# The goal of this workflow is to speed up PR creation and ensure guidelines are followed.
+# Additionally, it should improve developer's experience by automating things that are
+# already determined from branch and commit strings.
+
+name: Init PR Title from Commit
+
+on:
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  # This job uses the first commit as the default title
+  init-pr-title-from-commit:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Get first commit title
+        id: get_first_commit
+        run: |
+          echo "commit_message=$(\
+          curl \
+            -u ${{ secrets.GH_TOKEN }}:x-oauth-basic \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits \
+            | jq '.[0] | .commit | .message'\
+          )" >> $GITHUB_OUTPUT
+
+      - name: Assign title to match first commit message
+        run: |
+          curl \
+            -u  ${{ secrets.GH_TOKEN }}:x-oauth-basic \
+            -X PATCH \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+            -d '{"title": ${{ steps.get_first_commit.outputs.commit_message }}}'
